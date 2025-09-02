@@ -35,6 +35,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install cython
     
+    - name: Get precompiled libraries (Windows)
+      run: |
+        cd blender
+        # 运行Blender的更新脚本获取预编译库
+        python .\build_files\utils\make_update.py
+        # 确保子模块和库都已更新
+        git submodule update --init --recursive
+    
     - name: Set up Visual Studio
       uses: microsoft/setup-msbuild@v2
     
