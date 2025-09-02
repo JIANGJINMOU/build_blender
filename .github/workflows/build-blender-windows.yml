@@ -5,11 +5,14 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-2022  # 已更新为Windows Server 2022
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: cmd  # 使用CMD避免PowerShell的转义问题
     
     steps:
     - name: Checkout Blender source
@@ -18,55 +21,52 @@ jobs:
         repository: blender/blender
         submodules: recursive
         fetch-depth: 0
-        
+        path: blender  # 强制源码存放目录为blender
+    
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'  # 升级到Blender推荐的Python版本
-        cache: 'pip'  # 启用pip缓存加速
-        
+        python-version: '3.10'
+        cache: 'pip'
+    
     - name: Install dependencies
       run: |
-        # 安装必要的依赖包
         choco install -y git svn cmake ninja
         python -m pip install --upgrade pip
         pip install cython
-        
+    
     - name: Set up Visual Studio
       uses: microsoft/setup-msbuild@v2
-      
+    
     - name: Configure build
       run: |
-        # 创建构建目录
         mkdir build
         cd build
-        
-        # 针对Visual Studio 2022配置CMake
-        cmake ../blender \
-          -G "Visual Studio 17 2022" \  # 更新为VS2022生成器
-          -A x64 \
-          -DCMAKE_INSTALL_PREFIX=../install \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DWITH_PYTHON_INSTALL=ON \
+        cmake ..\blender ^
+          -G "Visual Studio 17 2022" ^
+          -A x64 ^
+          -DCMAKE_INSTALL_PREFIX=..\install ^
+          -DCMAKE_BUILD_TYPE=Release ^
+          -DWITH_PYTHON_INSTALL=ON ^
           -DWITH_INSTALL_PORTABLE=ON
-          
+    
     - name: Build Blender
       run: |
         cd build
-        msbuild /p:Configuration=Release /p:Platform=x64 /m blender.sln  # 自动检测可用CPU核心数
-        
+        msbuild /p:Configuration=Release /p:Platform=x64 /m blender.sln
+    
     - name: Install build
       run: |
         cd build
         msbuild /p:Configuration=Release /p:Platform=x64 INSTALL.vcxproj
-        
+    
     - name: Create zip package
-      run: |
-        7z a -tzip blender-windows-build.zip ./install/*
-        
+      run: 7z a -tzip blender-windows-build.zip .\install\*
+    
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: blender-windows-build
         path: blender-windows-build.zip
-        retention-days: 14  # 设置 artifacts 保留时间
+        retention-days: 14
+    
