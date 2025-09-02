@@ -5,10 +5,11 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-2022  # 已更新为Windows Server 2022
     
     steps:
     - name: Checkout Blender source
@@ -21,7 +22,8 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.10'  # 升级到Blender推荐的Python版本
+        cache: 'pip'  # 启用pip缓存加速
         
     - name: Install dependencies
       run: |
@@ -39,9 +41,9 @@ jobs:
         mkdir build
         cd build
         
-        # 运行CMake配置
+        # 针对Visual Studio 2022配置CMake
         cmake ../blender \
-          -G "Visual Studio 16 2019" \
+          -G "Visual Studio 17 2022" \  # 更新为VS2022生成器
           -A x64 \
           -DCMAKE_INSTALL_PREFIX=../install \
           -DCMAKE_BUILD_TYPE=Release \
@@ -51,7 +53,7 @@ jobs:
     - name: Build Blender
       run: |
         cd build
-        msbuild /p:Configuration=Release /p:Platform=x64 /m:2 blender.sln
+        msbuild /p:Configuration=Release /p:Platform=x64 /m blender.sln  # 自动检测可用CPU核心数
         
     - name: Install build
       run: |
@@ -67,3 +69,4 @@ jobs:
       with:
         name: blender-windows-build
         path: blender-windows-build.zip
+        retention-days: 14  # 设置 artifacts 保留时间
